@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# Function to fetch Bitcoin historical prices for the last 200 days
+get_historical_prices() {
+    end=$(date +%s)
+    start=$(date -d "-200 days" +%s)
+
+    response=$(curl -s "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart/range?vs_currency=usd&from=$start&to=$end")
+
+    echo $response | jq '.prices'
+}
+
+# Function to calculate the 200-day moving average
+calculate_200dma() {
+    prices=$1
+    total=0
+    count=0
+
+    for price in $(echo $prices | jq -r '.[] | .[1]'); do
+        total=$(echo "$total + $price" | bc)
+        count=$((count + 1))
+    done
+
+    if [ $count -eq 0 ]; then
+        echo "0"
+    else
+        echo "scale=2; $total / $count" | bc
+    fi
+}
+
+# Function to fetch the current Bitcoin price
+get_current_price() {
+    response=$(curl -s "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
+    echo $response | jq '.bitcoin.usd'
+}
+
+# Fetch historical prices
+historical_prices=$(get_historical_prices)
+
+# Calculate 200-day moving average
+dma_200=$(calculate_200dma "$historical_prices")
+
+# Fetch current price
+current_price=$(get_current_price)
+
+# Calculate Mayer Multiple
+if [ "$(echo "$dma_200 > 0" | bc)" -eq 1 ]; then
+    mayer_multiple=$(echo "scale=2; $current_price / $dma_200" | bc)
+else
+    mayer_multiple="N/A"
+fi
+
+# Output the results in a single line for i3blocks
+if [ "$mayer_multiple" != "N/A" ]; then
+    echo "$mayer_multiple $current_price"
+else
+    echo "Mayer Multiple: N/A"
+fi

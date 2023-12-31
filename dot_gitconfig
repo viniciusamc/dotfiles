@@ -1,0 +1,8 @@
+[user]
+	email = viniciusmartinsdacunha1@gmail.com
+	name = Vinicius
+[core]
+	editor = nvim
+
+[alias]
+	undo = reset --soft HEAD^
